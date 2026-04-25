@@ -2,7 +2,7 @@ import { useState } from "react";
 
 type Step = {
   title: string;
-  explain: string;
+  explain?: string;
   command?: string;
   checklist?: string[];
 };
