@@ -407,6 +407,18 @@ function ScenarioCard({
             ↺ Try Again
           </button>
         )}
+        <button
+          type="button"
+          onClick={onToggleSolved}
+          aria-pressed={isSolved}
+          className={`ml-auto border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all ${
+            isSolved
+              ? "bg-brick-green text-white"
+              : "bg-card text-foreground hover:bg-brick-green/15"
+          }`}
+        >
+          {isSolved ? "✓ Solved" : "Mark as Solved"}
+        </button>
       </div>
     </article>
   );
