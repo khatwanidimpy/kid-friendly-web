@@ -266,11 +266,23 @@ const diffColor: Record<Difficulty, string> = {
   Staff: "bg-[color:var(--case-border)] text-plastic-white",
 };
 
-function ScenarioCard({ s }: { s: Scenario }) {
+function ScenarioCard({
+  s,
+  isSolved,
+  onToggleSolved,
+}: {
+  s: Scenario;
+  isSolved: boolean;
+  onToggleSolved: () => void;
+}) {
   const [phase, setPhase] = useState<"question" | "hint" | "answer">("question");
 
   return (
-    <article className="bg-card border-2 border-[color:var(--case-border)] rounded-2xl brick-shadow-sm p-6 md:p-7 flex flex-col">
+    <article
+      className={`bg-card border-2 border-[color:var(--case-border)] rounded-2xl brick-shadow-sm p-6 md:p-7 flex flex-col transition-all ${
+        isSolved ? "ring-4 ring-brick-green ring-offset-2 ring-offset-brick-blue" : ""
+      }`}
+    >
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <span
           className={`${catColor[s.category]} border-2 border-[color:var(--case-border)] rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest`}
@@ -282,6 +294,11 @@ function ScenarioCard({ s }: { s: Scenario }) {
         >
           {s.difficulty}
         </span>
+        {isSolved && (
+          <span className="bg-brick-green text-white border-2 border-[color:var(--case-border)] rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest">
+            ✓ Solved
+          </span>
+        )}
       </div>
 
       <h3 className="font-display font-bold text-xl md:text-2xl mb-3">
