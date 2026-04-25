@@ -426,15 +426,21 @@ function ScenarioCard({
 
 export default function RealWorldScenarios() {
   const [filter, setFilter] = useState<Category>("All");
+  const { solved, toggle, reset } = useSolved();
+
   const visible =
     filter === "All" ? scenarios : scenarios.filter((s) => s.category === filter);
+
+  const total = scenarios.length;
+  const solvedCount = scenarios.filter((s) => solved.has(s.id)).length;
+  const pct = total === 0 ? 0 : Math.round((solvedCount / total) * 100);
 
   return (
     <section
       id="scenarios"
       className="py-24 px-6 bg-brick-blue text-plastic-white"
     >
-      <div className="max-w-5xl mx-auto text-center mb-12">
+      <div className="max-w-5xl mx-auto text-center mb-10">
         <div className="inline-block bg-brick-yellow text-[color:var(--case-border)] px-4 py-1 border-2 border-[color:var(--case-border)] rounded-full font-bold text-sm uppercase mb-6 brick-shadow-sm">
           Real-World Scenarios
         </div>
@@ -448,9 +454,57 @@ export default function RealWorldScenarios() {
         </p>
       </div>
 
+      {/* Progress tracker */}
+      <div className="max-w-3xl mx-auto bg-plastic-white text-foreground border-2 border-[color:var(--case-border)] rounded-2xl p-5 mb-8 brick-shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-foreground/60">
+              Your Progress
+            </p>
+            <p className="font-display font-bold text-xl">
+              {solvedCount} / {total} solved
+              <span className="text-foreground/55 font-medium text-base"> · {pct}%</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {solvedCount === total && total > 0 && (
+              <span className="bg-brick-green text-white border-2 border-[color:var(--case-border)] rounded-md px-3 py-1 text-xs font-bold uppercase tracking-widest">
+                🏆 All Solved!
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (solvedCount === 0) return;
+                if (confirm("Reset all scenario progress?")) reset();
+              }}
+              disabled={solvedCount === 0}
+              className="bg-card border-2 border-[color:var(--case-border)] px-3 py-1.5 rounded-md font-bold text-xs uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed hover:bg-secondary transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+        <div className="h-3 w-full bg-secondary border-2 border-[color:var(--case-border)] rounded-full overflow-hidden">
+          <div
+            className="h-full bg-brick-green transition-all duration-500"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <p className="text-xs text-foreground/55 mt-2">
+          Progress is saved on this device — close the tab and resume anytime.
+        </p>
+      </div>
+
       <div className="max-w-5xl mx-auto flex flex-wrap justify-center gap-2 mb-10">
         {categories.map((c) => {
           const active = filter === c;
+          const catSolved =
+            c === "All"
+              ? solvedCount
+              : scenarios.filter((s) => s.category === c && solved.has(s.id)).length;
+          const catTotal =
+            c === "All" ? total : scenarios.filter((s) => s.category === c).length;
           return (
             <button
               key={c}
@@ -463,6 +517,9 @@ export default function RealWorldScenarios() {
               }`}
             >
               {c}
+              <span className={`ml-2 text-[10px] ${active ? "opacity-80" : "opacity-60"}`}>
+                {catSolved}/{catTotal}
+              </span>
             </button>
           );
         })}
@@ -470,7 +527,12 @@ export default function RealWorldScenarios() {
 
       <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6">
         {visible.map((s) => (
-          <ScenarioCard key={s.id} s={s} />
+          <ScenarioCard
+            key={s.id}
+            s={s}
+            isSolved={solved.has(s.id)}
+            onToggleSolved={() => toggle(s.id)}
+          />
         ))}
       </div>
     </section>
