@@ -197,6 +197,13 @@ function Checklist({ items, labId, stepIdx }: { items: string[]; labId: string; 
 
 function LabCard({ lab }: { lab: Lab }) {
   const [open, setOpen] = useState(lab.id === "lab-1");
+  const [stepIdx, setStepIdx] = useState(0);
+  const total = lab.steps.length;
+  const isLast = stepIdx === total - 1;
+  const isFirst = stepIdx === 0;
+  const step = lab.steps[stepIdx];
+  const progressPct = ((stepIdx + 1) / total) * 100;
+
   return (
     <article className="bg-card border-2 border-[color:var(--case-border)] rounded-2xl brick-shadow-sm overflow-hidden">
       <button
@@ -216,7 +223,7 @@ function LabCard({ lab }: { lab: Lab }) {
               {lab.level}
             </span>
             <span className="text-xs font-bold uppercase tracking-widest text-foreground/55">
-              ~{lab.minutes} min
+              ~{lab.minutes} min · {total} steps
             </span>
           </div>
           <h3 className="font-display font-bold text-xl md:text-2xl mb-1">
@@ -233,36 +240,106 @@ function LabCard({ lab }: { lab: Lab }) {
       </button>
 
       {open && (
-        <div className="border-t-2 border-[color:var(--case-border)] bg-secondary/30 p-6 md:p-8 space-y-6">
-          {lab.steps.map((step, idx) => (
-            <div
-              key={idx}
-              className="bg-card border-2 border-[color:var(--case-border)] rounded-xl p-5"
-            >
-              <div className="flex items-baseline gap-3 mb-2">
-                <span className="font-display font-bold text-brick-red text-lg">
-                  Step {idx + 1}
-                </span>
-                <h4 className="font-display font-bold text-lg">{step.title}</h4>
-              </div>
-              <p className="text-foreground/75 leading-relaxed">{step.explain}</p>
-              {step.command && <CopyBlock command={step.command} />}
-              {step.checklist && (
-                <Checklist
-                  items={step.checklist}
-                  labId={lab.id}
-                  stepIdx={idx}
-                />
-              )}
+        <div className="border-t-2 border-[color:var(--case-border)] bg-secondary/30 p-6 md:p-8">
+          {/* Progress bar */}
+          <div className="flex items-center gap-3 mb-5">
+            <div className="grow h-3 bg-card border-2 border-[color:var(--case-border)] rounded-full overflow-hidden">
+              <div
+                className={`h-full ${lab.color} transition-all duration-300`}
+                style={{ width: `${progressPct}%` }}
+              />
             </div>
-          ))}
-          <div className="bg-brick-green text-white border-2 border-[color:var(--case-border)] rounded-xl p-5 brick-shadow-sm">
-            <p className="font-display font-bold text-lg">🎉 Lab complete?</p>
-            <p className="opacity-90">
-              Awesome. Take a screenshot and try the next one. You just did real
-              DevOps work.
-            </p>
+            <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-foreground/65">
+              Step {stepIdx + 1} / {total}
+            </span>
           </div>
+
+          {/* Step dots */}
+          <div className="flex flex-wrap gap-2 mb-5">
+            {lab.steps.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setStepIdx(i)}
+                aria-label={`Go to step ${i + 1}: ${s.title}`}
+                aria-current={i === stepIdx ? "step" : undefined}
+                className={`size-9 border-2 border-[color:var(--case-border)] rounded-lg font-display font-bold text-sm transition-all ${
+                  i === stepIdx
+                    ? `${lab.color} text-white brick-shadow-sm`
+                    : i < stepIdx
+                      ? "bg-brick-green text-white"
+                      : "bg-card text-foreground/60 hover:bg-secondary"
+                }`}
+              >
+                {i < stepIdx ? "✓" : i + 1}
+              </button>
+            ))}
+          </div>
+
+          {/* Current step */}
+          <div className="bg-card border-2 border-[color:var(--case-border)] rounded-xl p-5 min-h-[200px]">
+            <div className="flex items-baseline gap-3 mb-2">
+              <span className="font-display font-bold text-brick-red text-lg">
+                Step {stepIdx + 1}
+              </span>
+              <h4 className="font-display font-bold text-lg">{step.title}</h4>
+            </div>
+            {step.explain && (
+              <p className="text-foreground/75 leading-relaxed">
+                {step.explain}
+              </p>
+            )}
+            {step.command && <CopyBlock command={step.command} />}
+            {step.checklist && (
+              <Checklist
+                items={step.checklist}
+                labId={lab.id}
+                stepIdx={stepIdx}
+              />
+            )}
+          </div>
+
+          {/* Prev / Next controls */}
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
+              disabled={isFirst}
+              className="bg-card text-foreground border-2 border-[color:var(--case-border)] px-5 py-3 rounded-xl font-display font-bold brick-shadow-sm disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed enabled:active:translate-x-0.5 enabled:active:translate-y-0.5 enabled:active:shadow-none transition-all"
+            >
+              ← Previous
+            </button>
+
+            {!isLast ? (
+              <button
+                type="button"
+                onClick={() => setStepIdx((i) => Math.min(total - 1, i + 1))}
+                className="bg-brick-red text-white border-2 border-[color:var(--case-border)] px-6 py-3 rounded-xl font-display font-bold brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              >
+                Next Step →
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStepIdx(0)}
+                className="bg-brick-green text-white border-2 border-[color:var(--case-border)] px-6 py-3 rounded-xl font-display font-bold brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              >
+                🎉 Restart Lab
+              </button>
+            )}
+          </div>
+
+          {isLast && (
+            <div className="mt-5 bg-brick-green text-white border-2 border-[color:var(--case-border)] rounded-xl p-5 brick-shadow-sm">
+              <p className="font-display font-bold text-lg">
+                🎉 Lab complete!
+              </p>
+              <p className="opacity-90">
+                Awesome. Take a screenshot and try the next lab. You just did
+                real DevOps work.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </article>
