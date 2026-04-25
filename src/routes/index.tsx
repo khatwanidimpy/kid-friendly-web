@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import MiniLabs from "@/components/MiniLabs";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -100,6 +101,7 @@ function HomePage() {
       <Hero />
       <WhatIsDevOps />
       <LearningPath />
+      <MiniLabs />
       <Faq />
       <CTA />
       <Footer />
@@ -125,6 +127,9 @@ function Nav() {
           </a>
           <a href="#path" className="hover:text-brick-red transition-colors">
             The Path
+          </a>
+          <a href="#labs" className="hover:text-brick-red transition-colors">
+            Labs
           </a>
           <a href="#faq" className="hover:text-brick-red transition-colors">
             FAQ
