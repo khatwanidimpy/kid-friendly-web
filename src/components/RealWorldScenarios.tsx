@@ -1,4 +1,57 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+const STORAGE_KEY = "devkit:scenarios:solved:v1";
+
+function loadSolved(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? new Set(arr) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSolved(set: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function useSolved() {
+  const [solved, setSolved] = useState<Set<string>>(() => new Set());
+
+  // Hydrate after mount to avoid SSR mismatch.
+  useEffect(() => {
+    setSolved(loadSolved());
+  }, []);
+
+  const toggle = useCallback((id: string) => {
+    setSolved((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      saveSolved(next);
+      return next;
+    });
+  }, []);
+
+  const reset = useCallback(() => {
+    setSolved(() => {
+      const empty = new Set<string>();
+      saveSolved(empty);
+      return empty;
+    });
+  }, []);
+
+  return { solved, toggle, reset };
+}
+
 
 type Difficulty = "Mid" | "Senior" | "Staff";
 
