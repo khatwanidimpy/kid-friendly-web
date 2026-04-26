@@ -257,6 +257,67 @@ function ScenarioCard({
 export default function RealWorldScenarios() {
   const [filter, setFilter] = useState<Category>("All");
   const { solved, toggle, reset } = useSolved();
+  const [generated, setGenerated] = useState<Scenario[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Hydrate generated scenarios after mount.
+  useEffect(() => {
+    setGenerated(loadGenerated());
+  }, []);
+
+  const scenarios = useMemo<Scenario[]>(
+    () => [...baseScenarios, ...generated],
+    [generated],
+  );
+
+  const handleGenerate = useCallback(async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    try {
+      const existingTitles = scenarios.map((s) => s.title);
+      const { data, error } = await supabase.functions.invoke(
+        "generate-scenarios",
+        { body: { count: 12, existingTitles } },
+      );
+      if (error) {
+        const ctx = (error as { context?: { status?: number } }).context;
+        if (ctx?.status === 429) {
+          toast.error("Rate limit reached — please wait a moment.");
+        } else if (ctx?.status === 402) {
+          toast.error("AI credits exhausted. Add credits in workspace settings.");
+        } else {
+          toast.error(error.message || "Failed to generate scenarios");
+        }
+        return;
+      }
+      const incoming = (data?.scenarios ?? []) as GeneratedScenario[];
+      if (incoming.length === 0) {
+        toast.error("Model returned no scenarios — try again.");
+        return;
+      }
+      const stamped: Scenario[] = incoming.map((s, i) => ({
+        ...s,
+        id: `gen-${Date.now()}-${i}`,
+      }));
+      const next = [...generated, ...stamped];
+      setGenerated(next);
+      saveGenerated(next);
+      toast.success(`Added ${stamped.length} new scenarios`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Something went wrong generating scenarios");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [generated, isGenerating, scenarios]);
+
+  const handleClearGenerated = useCallback(() => {
+    if (generated.length === 0) return;
+    if (!confirm(`Remove all ${generated.length} AI-generated scenarios?`)) return;
+    setGenerated([]);
+    saveGenerated([]);
+    toast.success("Cleared generated scenarios");
+  }, [generated.length]);
 
   const visible =
     filter === "All" ? scenarios : scenarios.filter((s) => s.category === filter);
