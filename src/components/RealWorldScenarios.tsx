@@ -249,6 +249,445 @@ const scenarios: Scenario[] = [
     takeaway:
       "When SSH is slow but TCP is fine, it's almost always DNS or GSSAPI. `ssh -vvv` tells you exactly which line hangs.",
   },
+
+  // ───── Docker (extended) ─────
+  {
+    id: "d4",
+    category: "Docker",
+    difficulty: "Mid",
+    title: "Container can't reach the internet",
+    scene:
+      "A freshly started container can't `curl https://google.com`, but the host can. `docker network ls` looks normal.",
+    question: "What are the first three things you check?",
+    hint: "DNS, iptables, and the default bridge.",
+    answer:
+      "Check (1) container DNS — `/etc/resolv.conf` inside the container; (2) host iptables/FORWARD chain — Docker needs it set to ACCEPT or its own rules; (3) `net.ipv4.ip_forward=1` on the host. A recent firewalld or UFW rule often resets FORWARD to DROP.",
+    commands: [
+      "docker run --rm alpine cat /etc/resolv.conf",
+      "sudo iptables -L FORWARD -n",
+      "sysctl net.ipv4.ip_forward",
+    ],
+    takeaway:
+      "Docker networking depends on the host's forwarding + iptables. Firewall reloads are the usual culprit.",
+  },
+  {
+    id: "d5",
+    category: "Docker",
+    difficulty: "Senior",
+    title: "Build cache never hits in CI",
+    scene:
+      "Local builds are fast (10s) thanks to layer cache. In CI every build is 8 minutes — every layer rebuilds from scratch.",
+    question: "Why is the cache cold, and how do you warm it?",
+    hint: "CI runners are ephemeral. Where does cache live?",
+    answer:
+      "Each CI job gets a fresh runner with no local layer cache. Use BuildKit's `--cache-from` / `--cache-to` to push cache to a registry (or `type=gha` on GitHub Actions). Also order Dockerfile steps from least-to-most changing (deps before source).",
+    commands: [
+      "docker buildx build --cache-to type=registry,ref=myorg/app:cache,mode=max --cache-from type=registry,ref=myorg/app:cache -t myorg/app:ci --push .",
+      "# GHA: cache-to=type=gha,mode=max  cache-from=type=gha",
+    ],
+    takeaway:
+      "CI cache must be externalized. Registry or GHA cache + good layer ordering = 10x faster pipelines.",
+  },
+  {
+    id: "d6",
+    category: "Docker",
+    difficulty: "Mid",
+    title: "Permission denied on mounted volume",
+    scene:
+      "You mount `-v $(pwd)/data:/app/data` and the container logs `EACCES: permission denied, open '/app/data/file'`. The directory exists.",
+    question: "Why can't the container write, and what's the proper fix?",
+    hint: "UID inside container vs UID on host.",
+    answer:
+      "The container runs as a different UID (often non-root like 1000 or a service user) than the host directory's owner. Fix by either matching UIDs (`--user $(id -u):$(id -g)`), `chown`-ing the host dir to the container's UID, or building the image with a known UID and chowning during build.",
+    commands: [
+      "docker run --user $(id -u):$(id -g) -v $(pwd)/data:/app/data myimg",
+      "ls -ln data/   # see numeric owner",
+    ],
+    takeaway:
+      "Volume permission errors are always a UID mismatch. Fix the UID, don't `chmod 777`.",
+  },
+  {
+    id: "d7",
+    category: "Docker",
+    difficulty: "Senior",
+    title: "Image is 2GB — should be 200MB",
+    scene:
+      "Your Node.js production image weighs in at 2.1GB. Pulls are slow, registry costs are climbing.",
+    question: "Where is the bloat and how do you cut it 10x?",
+    hint: "Build deps, dev deps, and what base image you're FROM.",
+    answer:
+      "Three big wins: (1) multi-stage build — compile in `node:20`, copy artifacts into `node:20-alpine` or `gcr.io/distroless/nodejs`; (2) `.dockerignore` to exclude `node_modules`, `.git`, tests; (3) `npm ci --omit=dev` in the final stage. Use `dive` to audit layer-by-layer.",
+    commands: [
+      "dive myimg:latest",
+      "docker history myimg:latest --no-trunc",
+      "# FROM node:20 AS build ... FROM node:20-alpine AS runtime",
+    ],
+    takeaway:
+      "Multi-stage + slim base + .dockerignore turns 2GB into 150MB without changing your app.",
+  },
+  {
+    id: "d8",
+    category: "Docker",
+    difficulty: "Staff",
+    title: "Secrets leaked in image layers",
+    scene:
+      "A security audit finds your AWS keys in a published image, even though you `rm`-ed the file in a later RUN step.",
+    question: "Why are deleted secrets still in the image?",
+    hint: "Each RUN creates a new layer. Layers are immutable.",
+    answer:
+      "`rm` in a later layer only hides the file in the final filesystem — earlier layers still contain it and anyone with the image can `docker history` or extract them. Use BuildKit secrets (`--mount=type=secret`), build args that aren't persisted, or never put secrets in build context.",
+    commands: [
+      "DOCKER_BUILDKIT=1 docker build --secret id=aws,src=$HOME/.aws/credentials .",
+      "# In Dockerfile: RUN --mount=type=secret,id=aws cat /run/secrets/aws",
+      "docker history --no-trunc myimg | grep -i secret",
+    ],
+    takeaway:
+      "Layers are forever. Use BuildKit secret mounts — never COPY then rm a credential.",
+  },
+  {
+    id: "d9",
+    category: "Docker",
+    difficulty: "Senior",
+    title: "Compose works, swarm/k8s doesn't",
+    scene:
+      "Your `docker compose up` works flawlessly. The same image in Kubernetes can't reach its database service by name.",
+    question: "Why does service discovery break across orchestrators?",
+    hint: "Compose creates a project network with service-name DNS. K8s uses…?",
+    answer:
+      "Compose auto-creates a bridge network where each service is reachable by its compose service name. K8s uses Service objects and CoreDNS — you must create a Service for the database and reference it by service name (or `service.namespace.svc.cluster.local`). The hostname in your app config also needs to match the K8s Service name.",
+    commands: [
+      "kubectl get svc",
+      "kubectl run -it --rm dnsdebug --image=busybox --restart=Never -- nslookup mydb",
+    ],
+    takeaway:
+      "Compose ≠ K8s networking. Always check that a Service exists and your app uses the right hostname.",
+  },
+  {
+    id: "d10",
+    category: "Docker",
+    difficulty: "Senior",
+    title: "Healthcheck reports healthy but app is down",
+    scene:
+      "Your container's HEALTHCHECK is passing (`docker ps` shows healthy), but users report 500s. Inside the container, the app is hung.",
+    question: "What's wrong with the healthcheck?",
+    hint: "What is the healthcheck actually testing?",
+    answer:
+      "The healthcheck likely hits `/` or a TCP port that the framework keeps open even when downstream (DB, queue) is broken. Move to a real `/healthz` endpoint that exercises critical dependencies and returns non-200 when they fail. Set `--start-period`, `--interval`, and `--retries` sensibly.",
+    commands: [
+      "docker inspect --format='{{json .State.Health}}' <container> | jq",
+      "# HEALTHCHECK CMD curl -fsS http://localhost:8080/healthz || exit 1",
+    ],
+    takeaway:
+      "A healthcheck that always passes is worse than no healthcheck — it hides outages from your orchestrator.",
+  },
+
+  // ───── Kubernetes (extended) ─────
+  {
+    id: "k4",
+    category: "Kubernetes",
+    difficulty: "Mid",
+    title: "ImagePullBackOff after a deploy",
+    scene:
+      "You push a new image and rollout fails with `ImagePullBackOff`. The image tag exists in the registry — you just pushed it.",
+    question: "What are the three most common causes?",
+    hint: "Auth, typos, and private registries.",
+    answer:
+      "(1) Wrong tag/typo in the manifest; (2) private registry with no `imagePullSecrets` configured on the pod or default service account; (3) registry rate-limit (Docker Hub anonymous pulls). `kubectl describe pod` will tell you which — read the Events.",
+    commands: [
+      "kubectl describe pod <pod> | tail -20",
+      "kubectl create secret docker-registry regcred --docker-server=... --docker-username=... --docker-password=...",
+      "kubectl patch sa default -p '{\"imagePullSecrets\":[{\"name\":\"regcred\"}]}'",
+    ],
+    takeaway:
+      "`kubectl describe pod` always names the real cause. Don't guess — read the Events block.",
+  },
+  {
+    id: "k5",
+    category: "Kubernetes",
+    difficulty: "Senior",
+    title: "OOMKilled after node upgrade",
+    scene:
+      "After upgrading nodes from 1.27 to 1.29, several pods start getting OOMKilled. Their memory limits and actual usage haven't changed.",
+    question: "What changed at the node level that's now killing your pods?",
+    hint: "cgroup v1 vs cgroup v2.",
+    answer:
+      "Newer node images default to cgroup v2, which accounts memory differently (kernel memory, page cache attribution). Apps that lived just under their limit on v1 now exceed it on v2. Either bump the limit, or fix the actual leak — `kubectl top pod` and a heap profile will show which.",
+    commands: [
+      "kubectl describe node | grep -i cgroup",
+      "kubectl top pod --containers",
+      "kubectl get events --field-selector reason=OOMKilling",
+    ],
+    takeaway:
+      "Cgroup v2 is stricter. Pods near their limit will tip over after node upgrades — right-size before upgrading.",
+  },
+  {
+    id: "k6",
+    category: "Kubernetes",
+    difficulty: "Staff",
+    title: "PVC stuck in Pending forever",
+    scene:
+      "A new StatefulSet pod is Pending. Its PVC is also Pending: `waiting for a volume to be created, either by external provisioner ...`.",
+    question: "What's the matchmaking failure between PVC and PV?",
+    hint: "StorageClass, zone, and binding mode.",
+    answer:
+      "Three usual causes: (1) no StorageClass with a matching provisioner installed; (2) `volumeBindingMode: WaitForFirstConsumer` plus a pod scheduled to a zone where the storage backend can't provision; (3) quotas hit on the cloud volume API. Check the storage controller logs in `kube-system` (or wherever the CSI driver lives).",
+    commands: [
+      "kubectl get sc",
+      "kubectl describe pvc <pvc>",
+      "kubectl -n kube-system logs -l app=ebs-csi-controller -c csi-provisioner --tail=100",
+    ],
+    takeaway:
+      "PVC Pending is always a provisioner conversation. The CSI controller logs tell you exactly why.",
+  },
+  {
+    id: "k7",
+    category: "Kubernetes",
+    difficulty: "Senior",
+    title: "Ingress returns 502 after TLS renew",
+    scene:
+      "cert-manager renewed your TLS cert. Suddenly the Ingress returns 502 Bad Gateway for that host. Other hosts on the same controller are fine.",
+    question: "What did the renewal break?",
+    hint: "Did the controller actually pick up the new Secret?",
+    answer:
+      "Some ingress controllers (older NGINX, HAProxy) cache TLS certs in memory and don't auto-reload when the Secret changes. The renewed cert lives in the Secret but the controller is still presenting the old one — until reconfig fails closed and returns 502. Restart/reload the controller, or upgrade to a version with proper Secret-watch.",
+    commands: [
+      "kubectl -n ingress-nginx logs -l app.kubernetes.io/name=ingress-nginx --tail=200",
+      "kubectl -n ingress-nginx rollout restart deploy/ingress-nginx-controller",
+      "kubectl get secret <tls-secret> -o yaml | grep tls.crt | head",
+    ],
+    takeaway:
+      "Cert renewal isn't done until the controller actually reloads. Use a controller that watches Secrets, or restart it.",
+  },
+  {
+    id: "k8",
+    category: "Kubernetes",
+    difficulty: "Senior",
+    title: "HPA never scales up under load",
+    scene:
+      "Load test pushes CPU to 95%, but your HorizontalPodAutoscaler stays at 1 replica. `kubectl get hpa` shows `<unknown>/70%`.",
+    question: "Why is the HPA blind, and how do you fix it?",
+    hint: "What does the HPA query for metrics?",
+    answer:
+      "`<unknown>` means the HPA can't read metrics. Either metrics-server isn't installed/healthy, or the pod has no `resources.requests.cpu` set (HPA needs requests to compute %). Install metrics-server and ensure every pod controlled by HPA has CPU/memory requests defined.",
+    commands: [
+      "kubectl top pod   # fails if metrics-server is missing",
+      "kubectl -n kube-system get deploy metrics-server",
+      "kubectl describe hpa <hpa>",
+    ],
+    takeaway:
+      "HPA needs metrics-server AND resource requests. Without both, autoscaling silently does nothing.",
+  },
+  {
+    id: "k9",
+    category: "Kubernetes",
+    difficulty: "Staff",
+    title: "Mystery pod-to-pod latency spike",
+    scene:
+      "App-to-app calls inside the cluster suddenly P99 jumps from 5ms to 400ms. Node CPU/mem normal. No deploys went out. DNS lookups feel slow.",
+    question: "What's the most common cluster-wide latency culprit?",
+    hint: "Every connection starts with a name resolution.",
+    answer:
+      "CoreDNS is overloaded or the `ndots:5` default is causing 5+ NXDOMAIN lookups per external call. Check CoreDNS pod CPU and error rate, scale it up, enable NodeLocal DNSCache, and consider `dnsConfig.options: ndots: 1` for pods making external calls.",
+    commands: [
+      "kubectl -n kube-system top pod -l k8s-app=kube-dns",
+      "kubectl -n kube-system logs -l k8s-app=kube-dns --tail=200 | grep -i error",
+      "kubectl run -it --rm dnstest --image=busybox --restart=Never -- time nslookup api.github.com",
+    ],
+    takeaway:
+      "When the whole cluster slows down at once, suspect CoreDNS first. NodeLocal DNSCache is cheap insurance.",
+  },
+  {
+    id: "k10",
+    category: "Kubernetes",
+    difficulty: "Senior",
+    title: "ConfigMap update doesn't reach the pod",
+    scene:
+      "You edit a ConfigMap mounted as a volume. The file inside the running pod still shows the old value 10 minutes later.",
+    question: "Why doesn't the pod see the change, and when will it?",
+    hint: "kubelet sync interval vs subPath mounts.",
+    answer:
+      "ConfigMaps mounted as volumes update eventually (kubelet sync ~60–120s) — UNLESS you used `subPath`, which freezes the file at pod start. For env vars from ConfigMaps, the pod must restart. Best practice: don't use subPath for configs you want hot-reloaded, and have the app watch the file or use a sidecar reloader.",
+    commands: [
+      "kubectl exec <pod> -- cat /etc/config/myfile",
+      "kubectl get pod <pod> -o yaml | grep -A3 subPath",
+      "kubectl rollout restart deploy/<deploy>   # force pickup",
+    ],
+    takeaway:
+      "subPath = no live updates. Env vars from ConfigMaps = no live updates. Plan your reload story.",
+  },
+  {
+    id: "k11",
+    category: "Kubernetes",
+    difficulty: "Staff",
+    title: "etcd is slow — whole cluster lags",
+    scene:
+      "kubectl commands take 5–10 seconds. `kubectl get events` shows `etcdserver: request timed out`. Workloads still run but admin is painful.",
+    question: "What's choking etcd, and what do you do live?",
+    hint: "Disk I/O is etcd's #1 enemy.",
+    answer:
+      "etcd needs fast fsync — if the disk's write latency exceeds ~10ms, etcd starts timing out. Either the disk is degraded, the node is noisy-neighbored, or etcd has grown huge (>2GB) and needs defrag. Move etcd to NVMe, defrag, and set up alerts on `etcd_disk_wal_fsync_duration_seconds`.",
+    commands: [
+      "ETCDCTL_API=3 etcdctl --endpoints=... endpoint status -w table",
+      "ETCDCTL_API=3 etcdctl --endpoints=... defrag",
+      "# metric: etcd_disk_wal_fsync_duration_seconds_bucket",
+    ],
+    takeaway:
+      "etcd lives or dies by disk fsync latency. Put it on the fastest disk you have and defrag periodically.",
+  },
+
+  // ───── Linux (extended) ─────
+  {
+    id: "l4",
+    category: "Linux",
+    difficulty: "Mid",
+    title: "Service won't start after edit",
+    scene:
+      "You edited `/etc/nginx/nginx.conf` and ran `systemctl restart nginx`. It fails. `systemctl status nginx` just says `failed`.",
+    question: "Where do you actually find the real error?",
+    hint: "systemctl status is a summary. The real log is elsewhere.",
+    answer:
+      "`systemctl status` truncates. Use `journalctl -u nginx -n 50 --no-pager` for the full systemd log, and `nginx -t` to validate config before restart. 90% of the time it's a missing semicolon or a referenced file that doesn't exist.",
+    commands: [
+      "sudo nginx -t",
+      "sudo journalctl -u nginx -n 100 --no-pager",
+      "sudo systemctl restart nginx",
+    ],
+    takeaway:
+      "Always validate config before reload. `journalctl -u <svc>` shows what `status` hides.",
+  },
+  {
+    id: "l5",
+    category: "Linux",
+    difficulty: "Senior",
+    title: "Out of inodes, but disk has space",
+    scene:
+      "Writes fail with `No space left on device` but `df -h` shows the partition only 40% full.",
+    question: "What's actually exhausted?",
+    hint: "Files take both blocks AND inodes.",
+    answer:
+      "You're out of inodes — too many tiny files (mail spool, session files, cache directories with millions of entries). `df -i` confirms. Find the directory with the most files and prune it; long-term, mount with a filesystem that allocates inodes dynamically (XFS, btrfs) or reformat with more inodes.",
+    commands: [
+      "df -i",
+      "sudo find / -xdev -type f | cut -d/ -f2 | sort | uniq -c | sort -rn | head",
+      "ls /var/cache/foo | wc -l",
+    ],
+    takeaway:
+      "`df -h` is only half the story. Always check `df -i` when writes mysteriously fail.",
+  },
+  {
+    id: "l6",
+    category: "Linux",
+    difficulty: "Senior",
+    title: "Cron job runs manually, fails on schedule",
+    scene:
+      "Your backup script runs perfectly when you execute it. The same script in cron silently does nothing — no error, no output.",
+    question: "Why does cron's environment break scripts?",
+    hint: "cron has almost no environment.",
+    answer:
+      "cron runs with a minimal PATH and no shell rc files — so commands like `aws`, `kubectl`, or relative paths fail. Add absolute paths, set `PATH=` at the top of the crontab, and redirect stderr to a log: `* * * * * /path/script.sh >> /var/log/job.log 2>&1`. Then you'll actually see the error.",
+    commands: [
+      "crontab -l",
+      "* * * * * /usr/local/bin/aws s3 sync ... >> /var/log/backup.log 2>&1",
+      "env -i /bin/sh -c 'which aws'   # simulate cron env",
+    ],
+    takeaway:
+      "Cron silence is not success. Always log stderr and use absolute paths.",
+  },
+  {
+    id: "l7",
+    category: "Linux",
+    difficulty: "Staff",
+    title: "TIME_WAIT sockets eating the port range",
+    scene:
+      "A high-throughput service starts failing with `cannot assign requested address`. `ss -s` shows 28,000 sockets in TIME_WAIT.",
+    question: "What's exhausted, and what's the right fix?",
+    hint: "Local ephemeral ports.",
+    answer:
+      "The client side is running out of ephemeral ports because every short-lived outgoing connection lingers in TIME_WAIT for 60s. Fixes (in order): (1) use connection pooling / keep-alive in the app — best fix; (2) widen `net.ipv4.ip_local_port_range`; (3) enable `net.ipv4.tcp_tw_reuse=1`. Do NOT enable `tcp_tw_recycle` — it was removed for good reason.",
+    commands: [
+      "ss -s",
+      "sysctl net.ipv4.ip_local_port_range",
+      "sudo sysctl -w net.ipv4.tcp_tw_reuse=1",
+    ],
+    takeaway:
+      "Fix the app first (pooling). Kernel knobs are bandaids. Never tcp_tw_recycle.",
+  },
+  {
+    id: "l8",
+    category: "Linux",
+    difficulty: "Mid",
+    title: "Process won't die, even with kill -9",
+    scene:
+      "`kill -9 <pid>` returns success but the process keeps showing in `ps`. State column shows `D`.",
+    question: "Why is even SIGKILL ignored?",
+    hint: "What does state D mean?",
+    answer:
+      "State D is uninterruptible sleep — the process is waiting on a kernel I/O call (usually a hung NFS mount or a dying disk). The kernel won't deliver signals until the syscall returns. You can't kill it without fixing the underlying I/O (unmount with `-f -l`, reboot the storage, or in the worst case, reboot the host).",
+    commands: [
+      "ps -eo pid,stat,wchan,comm | awk '$2 ~ /D/'",
+      "cat /proc/<pid>/stack",
+      "sudo umount -f -l /mnt/badnfs",
+    ],
+    takeaway:
+      "kill -9 cannot reach a D-state process. Find the hung I/O and free it instead.",
+  },
+  {
+    id: "l9",
+    category: "Linux",
+    difficulty: "Senior",
+    title: "Server clock drift breaking auth",
+    scene:
+      "Some API calls intermittently fail with `token used before issued` or `signature expired`. Auth team confirms tokens are valid.",
+    question: "What's the silent culprit?",
+    hint: "JWT validation is time-sensitive to the second.",
+    answer:
+      "The server's clock has drifted (often after a VM live-migration, a hypervisor restart, or chronyd not running). JWT/OAuth validation has tight skew tolerance. Verify with `chronyc tracking` or `timedatectl` and ensure NTP is healthy on every node.",
+    commands: [
+      "timedatectl",
+      "chronyc tracking",
+      "sudo systemctl status chronyd",
+    ],
+    takeaway:
+      "Time sync is infrastructure. One drifted node = mysterious auth failures only on that node.",
+  },
+  {
+    id: "l10",
+    category: "Linux",
+    difficulty: "Senior",
+    title: "Memory 'used' high but app is small",
+    scene:
+      "`free -h` shows 28GB used out of 32GB. Your app uses 4GB. The host doesn't run anything else big.",
+    question: "Is the box actually low on memory?",
+    hint: "`free` lumps cache into used in some views.",
+    answer:
+      "Most of that is page cache — Linux uses free RAM to cache disk blocks and will release it under pressure. Look at the `available` column, not `used`. Real pressure shows up as swap-in/out activity (`vmstat 1`) and `MemAvailable` in `/proc/meminfo` dropping low.",
+    commands: [
+      "free -h",
+      "cat /proc/meminfo | grep -E 'MemAvailable|Cached|Buffers'",
+      "vmstat 1 5",
+    ],
+    takeaway:
+      "Cache is not used. Trust `available` and watch swap activity to know real memory pressure.",
+  },
+  {
+    id: "l11",
+    category: "Linux",
+    difficulty: "Staff",
+    title: "fork: Resource temporarily unavailable",
+    scene:
+      "A long-running service starts failing with `fork: Resource temporarily unavailable`. The host has plenty of CPU/RAM.",
+    question: "What limit is being hit?",
+    hint: "It's a per-user kernel limit, not a memory one.",
+    answer:
+      "You've hit `kernel.pid_max` system-wide, or much more commonly the per-user thread limit (`ulimit -u` / `nproc`). A leaking app spawning threads without joining will blow this. Check `ps -eLf | wc -l` and the user's process count, raise the limit in `/etc/security/limits.d/`, but really — find the leak.",
+    commands: [
+      "ulimit -u",
+      "ps -eLf | awk '{print $1}' | sort | uniq -c | sort -rn | head",
+      "cat /proc/sys/kernel/pid_max",
+    ],
+    takeaway:
+      "fork failures = thread/PID exhaustion, not memory. Raise limits to buy time, then fix the leak.",
+  },
 ];
 
 const categories = ["All", "Docker", "Kubernetes", "Linux"] as const;
