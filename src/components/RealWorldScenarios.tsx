@@ -1,7 +1,33 @@
-import { useCallback, useEffect, useState } from "react";
-import { scenarios, type Scenario, type Difficulty } from "@/data/scenarios";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { scenarios as baseScenarios, type Scenario, type Difficulty } from "@/data/scenarios";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const STORAGE_KEY = "devkit:scenarios:solved:v1";
+const GENERATED_KEY = "devkit:scenarios:generated:v1";
+
+type GeneratedScenario = Omit<Scenario, "id">;
+
+function loadGenerated(): Scenario[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(GENERATED_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? (arr as Scenario[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveGenerated(list: Scenario[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GENERATED_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore quota */
+  }
+}
 
 function loadSolved(): Set<string> {
   if (typeof window === "undefined") return new Set();
