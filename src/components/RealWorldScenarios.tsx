@@ -1,7 +1,33 @@
-import { useCallback, useEffect, useState } from "react";
-import { scenarios, type Scenario, type Difficulty } from "@/data/scenarios";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { scenarios as baseScenarios, type Scenario, type Difficulty } from "@/data/scenarios";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const STORAGE_KEY = "devkit:scenarios:solved:v1";
+const GENERATED_KEY = "devkit:scenarios:generated:v1";
+
+type GeneratedScenario = Omit<Scenario, "id">;
+
+function loadGenerated(): Scenario[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(GENERATED_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? (arr as Scenario[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveGenerated(list: Scenario[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GENERATED_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore quota */
+  }
+}
 
 function loadSolved(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -231,6 +257,67 @@ function ScenarioCard({
 export default function RealWorldScenarios() {
   const [filter, setFilter] = useState<Category>("All");
   const { solved, toggle, reset } = useSolved();
+  const [generated, setGenerated] = useState<Scenario[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Hydrate generated scenarios after mount.
+  useEffect(() => {
+    setGenerated(loadGenerated());
+  }, []);
+
+  const scenarios = useMemo<Scenario[]>(
+    () => [...baseScenarios, ...generated],
+    [generated],
+  );
+
+  const handleGenerate = useCallback(async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    try {
+      const existingTitles = scenarios.map((s) => s.title);
+      const { data, error } = await supabase.functions.invoke(
+        "generate-scenarios",
+        { body: { count: 12, existingTitles } },
+      );
+      if (error) {
+        const ctx = (error as { context?: { status?: number } }).context;
+        if (ctx?.status === 429) {
+          toast.error("Rate limit reached — please wait a moment.");
+        } else if (ctx?.status === 402) {
+          toast.error("AI credits exhausted. Add credits in workspace settings.");
+        } else {
+          toast.error(error.message || "Failed to generate scenarios");
+        }
+        return;
+      }
+      const incoming = (data?.scenarios ?? []) as GeneratedScenario[];
+      if (incoming.length === 0) {
+        toast.error("Model returned no scenarios — try again.");
+        return;
+      }
+      const stamped: Scenario[] = incoming.map((s, i) => ({
+        ...s,
+        id: `gen-${Date.now()}-${i}`,
+      }));
+      const next = [...generated, ...stamped];
+      setGenerated(next);
+      saveGenerated(next);
+      toast.success(`Added ${stamped.length} new scenarios`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Something went wrong generating scenarios");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [generated, isGenerating, scenarios]);
+
+  const handleClearGenerated = useCallback(() => {
+    if (generated.length === 0) return;
+    if (!confirm(`Remove all ${generated.length} AI-generated scenarios?`)) return;
+    setGenerated([]);
+    saveGenerated([]);
+    toast.success("Cleared generated scenarios");
+  }, [generated.length]);
 
   const visible =
     filter === "All" ? scenarios : scenarios.filter((s) => s.category === filter);
@@ -256,6 +343,51 @@ export default function RealWorldScenarios() {
           your move, then check the answer with the exact commands a senior
           would run.
         </p>
+      </div>
+
+      {/* AI generator */}
+      <div className="max-w-3xl mx-auto bg-brick-yellow text-[color:var(--case-border)] border-2 border-[color:var(--case-border)] rounded-2xl p-5 mb-6 brick-shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-widest opacity-70">
+              ✨ AI Scenario Generator
+            </p>
+            <p className="font-display font-bold text-lg leading-snug">
+              Need more practice? Generate fresh real-world scenarios.
+            </p>
+            <p className="text-sm opacity-80">
+              Adds ~12 new Docker / Kubernetes / Linux problems each click.
+              {generated.length > 0 && (
+                <>
+                  {" "}
+                  <span className="font-bold">
+                    {generated.length} generated so far.
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {generated.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearGenerated}
+                disabled={isGenerating}
+                className="bg-plastic-white border-2 border-[color:var(--case-border)] px-3 py-2 rounded-md font-bold text-xs uppercase tracking-widest hover:bg-card disabled:opacity-50 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="bg-brick-red text-white border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60 disabled:cursor-wait transition-all"
+            >
+              {isGenerating ? "Generating…" : "+ Generate More"}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Progress tracker */}
