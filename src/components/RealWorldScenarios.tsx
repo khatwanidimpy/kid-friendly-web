@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { scenarios, type Scenario, type Difficulty } from "@/data/scenarios";
 
 const STORAGE_KEY = "devkit:scenarios:solved:v1";
 
