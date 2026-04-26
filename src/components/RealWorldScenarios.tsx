@@ -345,6 +345,51 @@ export default function RealWorldScenarios() {
         </p>
       </div>
 
+      {/* AI generator */}
+      <div className="max-w-3xl mx-auto bg-brick-yellow text-[color:var(--case-border)] border-2 border-[color:var(--case-border)] rounded-2xl p-5 mb-6 brick-shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-widest opacity-70">
+              ✨ AI Scenario Generator
+            </p>
+            <p className="font-display font-bold text-lg leading-snug">
+              Need more practice? Generate fresh real-world scenarios.
+            </p>
+            <p className="text-sm opacity-80">
+              Adds ~12 new Docker / Kubernetes / Linux problems each click.
+              {generated.length > 0 && (
+                <>
+                  {" "}
+                  <span className="font-bold">
+                    {generated.length} generated so far.
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {generated.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearGenerated}
+                disabled={isGenerating}
+                className="bg-plastic-white border-2 border-[color:var(--case-border)] px-3 py-2 rounded-md font-bold text-xs uppercase tracking-widest hover:bg-card disabled:opacity-50 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="bg-brick-red text-white border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60 disabled:cursor-wait transition-all"
+            >
+              {isGenerating ? "Generating…" : "+ Generate More"}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Progress tracker */}
       <div className="max-w-3xl mx-auto bg-plastic-white text-foreground border-2 border-[color:var(--case-border)] rounded-2xl p-5 mb-8 brick-shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
