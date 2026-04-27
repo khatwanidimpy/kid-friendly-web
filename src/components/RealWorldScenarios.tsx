@@ -136,10 +136,10 @@ function ScenarioCard({
       </h3>
 
       <div className="bg-secondary/50 border-l-4 border-[color:var(--case-border)] rounded-md p-4 mb-4">
-        <p className="text-xs font-bold uppercase tracking-widest text-foreground/55 mb-1">
+        <p className="text-xs font-bold uppercase tracking-widest text-foreground/70 mb-1">
           Scene
         </p>
-        <p className="text-foreground/85 leading-relaxed text-sm md:text-base">
+        <p className="text-foreground leading-relaxed text-sm md:text-base">
           {s.scene}
         </p>
       </div>
@@ -158,7 +158,7 @@ function ScenarioCard({
           <p className="text-xs font-bold uppercase tracking-widest mb-1">
             💡 Hint
           </p>
-          <p className="text-foreground/85 italic">{s.hint}</p>
+          <p className="text-foreground italic">{s.hint}</p>
         </div>
       )}
 
@@ -168,12 +168,12 @@ function ScenarioCard({
             <p className="text-xs font-bold uppercase tracking-widest text-brick-green mb-1">
               ✓ Answer
             </p>
-            <p className="text-foreground/90 leading-relaxed">{s.answer}</p>
+            <p className="text-foreground leading-relaxed">{s.answer}</p>
           </div>
 
           {s.commands && s.commands.length > 0 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-foreground/65 mb-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-foreground/80 mb-2">
                 Commands
               </p>
               <pre className="bg-[color:var(--case-border)] text-plastic-white font-mono text-xs md:text-sm leading-relaxed p-4 rounded-lg overflow-x-auto whitespace-pre">
@@ -186,7 +186,7 @@ function ScenarioCard({
             <p className="text-xs font-bold uppercase tracking-widest text-brick-red mb-1">
               Takeaway
             </p>
-            <p className="text-sm text-foreground/85">{s.takeaway}</p>
+            <p className="text-sm text-foreground">{s.takeaway}</p>
           </div>
         </div>
       )}
@@ -394,12 +394,12 @@ export default function RealWorldScenarios() {
       <div className="max-w-3xl mx-auto bg-plastic-white text-foreground border-2 border-[color:var(--case-border)] rounded-2xl p-5 mb-8 brick-shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-foreground/60">
+            <p className="text-xs font-bold uppercase tracking-widest text-foreground/75">
               Your Progress
             </p>
             <p className="font-display font-bold text-xl">
               {solvedCount} / {total} solved
-              <span className="text-foreground/55 font-medium text-base"> · {pct}%</span>
+              <span className="text-foreground/70 font-medium text-base"> · {pct}%</span>
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -427,7 +427,7 @@ export default function RealWorldScenarios() {
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className="text-xs text-foreground/55 mt-2">
+        <p className="text-xs text-foreground/70 mt-2">
           Progress is saved on this device — close the tab and resume anytime.
         </p>
       </div>
