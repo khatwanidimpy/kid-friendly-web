@@ -50,7 +50,7 @@
 
   /* Brand palette (Modular Toy Kit) */
   --brick-red: oklch(0.638 0.213 25);
-  --brick-blue: oklch(0.32 0.09 260);
+  --brick-blue: oklch(0.22 0.07 260);
   --brick-yellow: oklch(0.84 0.165 85);
   --brick-green: oklch(0.65 0.12 175);
   --plastic-white: oklch(0.985 0.005 95);
@@ -67,7 +67,7 @@
   --secondary: oklch(0.95 0.01 90);
   --secondary-foreground: var(--brick-blue);
   --muted: oklch(0.95 0.01 90);
-  --muted-foreground: oklch(0.5 0.04 260);
+  --muted-foreground: oklch(0.35 0.05 260);
   --accent: var(--brick-yellow);
   --accent-foreground: var(--case-border);
   --destructive: oklch(0.577 0.245 27.325);
