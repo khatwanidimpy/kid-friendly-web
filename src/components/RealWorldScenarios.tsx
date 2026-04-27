@@ -85,7 +85,7 @@ const categories = ["All", "Docker", "Kubernetes", "Linux"] as const;
 type Category = (typeof categories)[number];
 
 const catColor: Record<Scenario["category"], string> = {
-  Docker: "bg-brick-blue text-[color:var(--case-border)]",
+  Docker: "bg-white text-[color:var(--case-border)]",
   Kubernetes: "bg-brick-green text-[color:var(--case-border)]",
   Linux: "bg-brick-yellow text-[color:var(--case-border)]",
 };
