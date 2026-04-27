@@ -131,7 +131,7 @@ function ScenarioCard({
         )}
       </div>
 
-      <h3 className="font-display font-bold text-xl md:text-2xl mb-3 text-card-foreground">
+      <h3 className="font-display font-bold text-xl md:text-2xl mb-3 text-card-foreground break-words [overflow-wrap:anywhere] hyphens-auto">
         {s.title}
       </h3>
 
@@ -139,7 +139,7 @@ function ScenarioCard({
         <p className="text-xs font-bold uppercase tracking-widest text-foreground/70 mb-1">
           Scene
         </p>
-        <p className="text-foreground leading-relaxed text-sm md:text-base">
+        <p className="text-foreground leading-relaxed text-sm md:text-base break-words [overflow-wrap:anywhere]">
           {s.scene}
         </p>
       </div>
@@ -148,7 +148,7 @@ function ScenarioCard({
         <p className="text-xs font-bold uppercase tracking-widest text-brick-red mb-1">
           Your turn
         </p>
-        <p className="font-display font-bold text-lg leading-snug text-card-foreground">
+        <p className="font-display font-bold text-lg leading-snug text-card-foreground break-words [overflow-wrap:anywhere]">
           {s.question}
         </p>
       </div>
@@ -158,7 +158,7 @@ function ScenarioCard({
           <p className="text-xs font-bold uppercase tracking-widest mb-1">
             💡 Hint
           </p>
-          <p className="text-foreground italic">{s.hint}</p>
+          <p className="text-foreground italic break-words [overflow-wrap:anywhere]">{s.hint}</p>
         </div>
       )}
 
@@ -168,7 +168,7 @@ function ScenarioCard({
             <p className="text-xs font-bold uppercase tracking-widest text-brick-green mb-1">
               ✓ Answer
             </p>
-            <p className="text-foreground leading-relaxed">{s.answer}</p>
+            <p className="text-foreground leading-relaxed break-words [overflow-wrap:anywhere]">{s.answer}</p>
           </div>
 
           {s.commands && s.commands.length > 0 && (
@@ -176,7 +176,7 @@ function ScenarioCard({
               <p className="text-xs font-bold uppercase tracking-widest text-foreground/80 mb-2">
                 Commands
               </p>
-              <pre className="bg-[color:var(--case-border)] text-plastic-white font-mono text-xs md:text-sm leading-relaxed p-4 rounded-lg overflow-x-auto whitespace-pre">
+              <pre className="bg-[color:var(--case-border)] text-plastic-white font-mono text-xs md:text-sm leading-relaxed p-4 rounded-lg overflow-x-auto whitespace-pre max-w-full">
                 {s.commands.join("\n")}
               </pre>
             </div>
@@ -186,7 +186,7 @@ function ScenarioCard({
             <p className="text-xs font-bold uppercase tracking-widest text-brick-red mb-1">
               Takeaway
             </p>
-            <p className="text-sm text-foreground">{s.takeaway}</p>
+            <p className="text-sm text-foreground break-words [overflow-wrap:anywhere]">{s.takeaway}</p>
           </div>
         </div>
       )}
