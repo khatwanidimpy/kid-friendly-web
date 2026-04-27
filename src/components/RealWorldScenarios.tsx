@@ -131,7 +131,7 @@ function ScenarioCard({
         )}
       </div>
 
-      <h3 className="font-display font-bold text-xl md:text-2xl mb-3">
+      <h3 className="font-display font-bold text-xl md:text-2xl mb-3 text-card-foreground">
         {s.title}
       </h3>
 
@@ -148,7 +148,7 @@ function ScenarioCard({
         <p className="text-xs font-bold uppercase tracking-widest text-brick-red mb-1">
           Your turn
         </p>
-        <p className="font-display font-bold text-lg leading-snug">
+        <p className="font-display font-bold text-lg leading-snug text-card-foreground">
           {s.question}
         </p>
       </div>
