@@ -85,14 +85,14 @@ const categories = ["All", "Docker", "Kubernetes", "Linux"] as const;
 type Category = (typeof categories)[number];
 
 const catColor: Record<Scenario["category"], string> = {
-  Docker: "bg-brick-blue text-white",
-  Kubernetes: "bg-brick-green text-white",
+  Docker: "bg-brick-blue text-[color:var(--case-border)]",
+  Kubernetes: "bg-brick-green text-[color:var(--case-border)]",
   Linux: "bg-brick-yellow text-[color:var(--case-border)]",
 };
 
 const diffColor: Record<Difficulty, string> = {
   Mid: "bg-secondary text-foreground",
-  Senior: "bg-brick-red text-white",
+  Senior: "bg-brick-red text-[color:var(--case-border)]",
   Staff: "bg-[color:var(--case-border)] text-plastic-white",
 };
 
@@ -125,7 +125,7 @@ function ScenarioCard({
           {s.difficulty}
         </span>
         {isSolved && (
-          <span className="bg-brick-green text-white border-2 border-[color:var(--case-border)] rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest">
+          <span className="bg-brick-green text-[color:var(--case-border)] border-2 border-[color:var(--case-border)] rounded-md px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest">
             ✓ Solved
           </span>
         )}
@@ -204,7 +204,7 @@ function ScenarioCard({
             <button
               type="button"
               onClick={() => setPhase("answer")}
-              className="bg-brick-red text-white border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              className="bg-brick-red text-[color:var(--case-border)] border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
             >
               Reveal Answer
             </button>
@@ -222,7 +222,7 @@ function ScenarioCard({
             <button
               type="button"
               onClick={() => setPhase("answer")}
-              className="bg-brick-red text-white border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              className="bg-brick-red text-[color:var(--case-border)] border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
             >
               Reveal Answer
             </button>
@@ -243,7 +243,7 @@ function ScenarioCard({
           aria-pressed={isSolved}
           className={`ml-auto border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all ${
             isSolved
-              ? "bg-brick-green text-white"
+              ? "bg-brick-green text-[color:var(--case-border)]"
               : "bg-card text-foreground hover:bg-brick-green/15"
           }`}
         >
@@ -382,7 +382,7 @@ export default function RealWorldScenarios() {
               type="button"
               onClick={handleGenerate}
               disabled={isGenerating}
-              className="bg-brick-red text-white border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60 disabled:cursor-wait transition-all"
+              className="bg-brick-red text-[color:var(--case-border)] border-2 border-[color:var(--case-border)] px-4 py-2 rounded-lg font-display font-bold text-sm brick-shadow-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60 disabled:cursor-wait transition-all"
             >
               {isGenerating ? "Generating…" : "+ Generate More"}
             </button>
@@ -404,7 +404,7 @@ export default function RealWorldScenarios() {
           </div>
           <div className="flex items-center gap-2">
             {solvedCount === total && total > 0 && (
-              <span className="bg-brick-green text-white border-2 border-[color:var(--case-border)] rounded-md px-3 py-1 text-xs font-bold uppercase tracking-widest">
+              <span className="bg-brick-green text-[color:var(--case-border)] border-2 border-[color:var(--case-border)] rounded-md px-3 py-1 text-xs font-bold uppercase tracking-widest">
                 🏆 All Solved!
               </span>
             )}
@@ -448,7 +448,7 @@ export default function RealWorldScenarios() {
               onClick={() => setFilter(c)}
               className={`px-4 py-2 border-2 border-[color:var(--case-border)] rounded-lg font-display font-bold text-sm uppercase tracking-wider transition-all ${
                 active
-                  ? "bg-brick-red text-white brick-shadow-sm"
+                  ? "bg-brick-red text-[color:var(--case-border)] brick-shadow-sm"
                   : "bg-plastic-white text-[color:var(--case-border)] hover:bg-brick-yellow"
               }`}
             >
