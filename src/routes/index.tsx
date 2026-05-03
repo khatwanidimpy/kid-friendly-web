@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import MiniLabs from "@/components/MiniLabs";
 import RealWorldScenarios from "@/components/RealWorldScenarios";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -111,6 +114,33 @@ function HomePage() {
   );
 }
 
+function AuthButton() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) {
+    return (
+      <button
+        type="button"
+        onClick={async () => {
+          await supabase.auth.signOut();
+          toast.success("Signed out");
+        }}
+        className="bg-card text-foreground border-2 border-[color:var(--case-border)] px-5 py-2 rounded-lg brick-shadow-sm font-bold active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+      >
+        Sign out
+      </button>
+    );
+  }
+  return (
+    <Link
+      to="/auth"
+      className="bg-brick-yellow text-[color:var(--case-border)] border-2 border-[color:var(--case-border)] px-5 py-2 rounded-lg brick-shadow-sm font-bold active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+    >
+      Sign in
+    </Link>
+  );
+}
+
 function Nav() {
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b-2 border-[color:var(--case-border)] px-6 py-4">
@@ -139,12 +169,7 @@ function Nav() {
           <a href="#faq" className="hover:text-brick-red transition-colors">
             FAQ
           </a>
-          <a
-            href="#start"
-            className="bg-brick-yellow text-[color:var(--case-border)] border-2 border-[color:var(--case-border)] px-5 py-2 rounded-lg brick-shadow-sm font-bold active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
-          >
-            Start Free
-          </a>
+          <AuthButton />
         </div>
       </div>
     </nav>
