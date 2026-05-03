@@ -14,7 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scenarios: {
+        Row: {
+          answer: string
+          category: string
+          commands: string[]
+          created_at: string
+          created_by: string | null
+          difficulty: string
+          hint: string
+          id: string
+          question: string
+          scene: string
+          takeaway: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          category: string
+          commands?: string[]
+          created_at?: string
+          created_by?: string | null
+          difficulty: string
+          hint: string
+          id?: string
+          question: string
+          scene: string
+          takeaway: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          category?: string
+          commands?: string[]
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          hint?: string
+          id?: string
+          question?: string
+          scene?: string
+          takeaway?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_progress: {
+        Row: {
+          answer_viewed: boolean
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          hint_viewed: boolean
+          id: string
+          scenario_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer_viewed?: boolean
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          hint_viewed?: boolean
+          id?: string
+          scenario_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer_viewed?: boolean
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          hint_viewed?: boolean
+          id?: string
+          scenario_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_progress_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
